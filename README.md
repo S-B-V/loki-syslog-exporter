@@ -54,13 +54,32 @@ docker build -t loki-syslog-exporter .
 If Loki is reached through a `kubectl port-forward` on your host, use host networking on Linux:
 
 ```bash
-docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD:/data" loki-syslog-exporter
+docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/s-b-v/loki-syslog-exporter:latest
 ```
 
 With Podman on Fedora / SELinux:
 
+Retrieve UID/GID requirements:
+
 ```bash
-podman run --rm --network host --userns=keep-id -v "$PWD:/data:Z" loki-syslog-exporter
+podman run --rm --network host --userns=keep-id --entrypoint id ghcr.io/s-b-v/loki-syslog-exporter:latest
+```
+output:
+```bash
+uid=65532(app) gid=65532(app) groups=1000(sbv),65532(app)
+```
+
+Create folders:
+
+```bash
+mkdir -p logs
+podman unshare chown -R 65532:65532 $PWD/logs
+
+```
+
+
+```bash
+podman run --rm --network host --userns=keep-id -v "$PWD/logs/:/data:Z" ghcr.io/s-b-v/loki-syslog-exporter:latest
 ```
 
 Specific start date and output file:
@@ -69,7 +88,7 @@ Specific start date and output file:
 docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD:/data" \
   -e START="2026-06-05 00:00:00" \
   -e OUT="syslog-since-june-5.log" \
-  loki-syslog-exporter
+  ghcr.io/s-b-v/loki-syslog-exporter:latest
 ```
 
 If the container runs inside Kubernetes, point it at the in-cluster service instead, for example:
@@ -98,7 +117,7 @@ If the container runs inside Kubernetes, point it at the in-cluster service inst
 The included GitHub Actions workflow builds and pushes:
 
 ```text
-ghcr.io/<owner>/<repo>:latest
-ghcr.io/<owner>/<repo>:<branch>
-ghcr.io/<owner>/<repo>:sha-<git-sha>
+ghcr.io/s-b-v/loki-syslog-exporter:latest
+ghcr.io/s-b-v/loki-syslog-exporter:<branch>
+ghcr.io/s-b-v/loki-syslog-exporter:sha-<git-sha>
 ```
