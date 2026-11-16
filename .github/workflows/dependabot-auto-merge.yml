@@ -2,16 +2,11 @@ name: Dependabot auto-merge
 
 on:
   pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
+    types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 concurrency:
   group: dependabot-auto-merge-${{ github.event.pull_request.number }}
@@ -19,41 +14,25 @@ concurrency:
 
 jobs:
   dependabot-auto-merge:
-    name: Auto-merge Dependabot PR
-    runs-on: ubuntu-latest
-
-    if: >
+    name: Enable auto-merge for minor and patch updates
+    if: >-
       github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.draft == false
-
+    runs-on: ubuntu-latest
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable auto-merge
-        run: |
-          set -euo pipefail
-
-          gh pr merge \
-            --auto \
-            --squash \
-            --delete-branch \
-            --match-head-commit "$PR_HEAD_SHA" \
-            "$PR_URL"
+      - name: Enable auto-merge (non-major only)
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Comment if auto-merge setup failed
-        if: failure()
         run: |
-          gh pr comment "$PR_URL" \
-            --body "Dependabot auto-merge setup failed. Manual attention required: $RUN_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          gh pr merge --auto --squash --delete-branch \
+            --match-head-commit "$PR_HEAD_SHA" "$PR_URL"
