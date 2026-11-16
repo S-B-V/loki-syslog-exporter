@@ -1,3 +1,4 @@
+
 name: Dependabot auto-merge
 
 on:
@@ -8,31 +9,25 @@ permissions:
   contents: write
   pull-requests: write
 
-concurrency:
-  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
-  dependabot-auto-merge:
-    name: Enable auto-merge for minor and patch updates
+  auto-merge:
     if: >-
       github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+
     steps:
-      - name: Fetch Dependabot metadata
+      - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge (non-major only)
+
+      - name: Enable auto-merge
         if: >-
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
           steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          gh pr merge --auto --squash --delete-branch \
-            --match-head-commit "$PR_HEAD_SHA" "$PR_URL"
+        run: gh pr merge --auto --squash "$PR_URL"
